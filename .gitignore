@@ -1,0 +1,16 @@
+# Java
+*.class
+
+# Build artifacts
+gitlet/sentinel
+target/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+
+# Python
+__pycache__/
