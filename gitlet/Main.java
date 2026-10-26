@@ -1,24 +1,12 @@
 package gitlet;
 
-/** Driver class for Gitlet, a subset of the Git version-control system.
- *  @author TODO
+/** 程序总入口：只把命令行参数原样转交给 Repository.run。
+ *  @author seeleHUAelysia
  */
 public class Main {
 
-    /** Usage: java gitlet.Main ARGS, where ARGS contains
-     *  <COMMAND> <OPERAND1> <OPERAND2> ... 
-     */
+    /** @param args 命令行参数；args[0] 为命令名，其余为该命令的操作数。 */
     public static void main(String[] args) {
-        // TODO: what if args is empty?
-        String firstArg = args[0];
-        switch(firstArg) {
-            case "init":
-                // TODO: handle the `init` command
-                break;
-            case "add":
-                // TODO: handle the `add [filename]` command
-                break;
-            // TODO: FILL THE REST IN
-        }
+        Repository.run(args);
     }
 }
