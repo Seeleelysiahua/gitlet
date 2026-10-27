@@ -109,14 +109,12 @@ public class Repository {
                     break;
 
                 default:
-                    throw Utils.error(
-                            "No command with that name exists.");
+                    throw Utils.error("No command with that name exists.");
             }
 
             /* 第 4 步：未初始化；init 豁免。 */
             if (!command.equals("init") && !GITLET_DIR.isDirectory()) {
-                throw Utils.error(
-                        "Not in an initialized Gitlet directory.");
+                throw Utils.error("Not in an initialized Gitlet directory.");
             }
 
             /* 分发：按命令名调用同名方法，只传操作数。
@@ -142,9 +140,12 @@ public class Repository {
                     globalLog();
                     break;
 
+                case "find":
+                    find(operands[0]);
+                    break;
+
                 default:
-                    throw Utils.error(
-                            "No command with that name exists.");
+                    throw Utils.error("No command with that name exists.");
             }
         } catch (GitletException e) {
             /* 统一汇报链唯一出口：逐字打印消息后以 0 退出。 */
@@ -284,6 +285,26 @@ public class Repository {
             File commitFile = Utils.join(COMMITS_DIR, id);
             Commit commit = Utils.readObject(commitFile, Commit.class);
             printCommit(commit, id);
+        }
+    }
+
+    /** find 命令：打印消息与参数完全相等的所有 commit 的 ID（每个一行）。
+     *  <p>需遍历完全部 commit 才知道是否有匹配；一个都没找到时抛错。
+     *  全程只读，不修改状态。
+     *  @param message 要查找的提交消息（精确相等）。 */
+    static void find(String message) {
+        List<String> allCommitIDs = Utils.plainFilenamesIn(COMMITS_DIR);
+        boolean matched = false;
+        for (String id : allCommitIDs) {
+            File commitFile = Utils.join(COMMITS_DIR, id);
+            Commit commit = Utils.readObject(commitFile, Commit.class);
+            if (message.equals(commit.getMessage())) {
+                matched = true;
+                Utils.message(id);
+            }
+        }
+        if (!matched) {
+            throw Utils.error("Found no commit with that message.");
         }
     }
 

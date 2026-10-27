@@ -1,0 +1,42 @@
+# test15-find：find 按提交消息查找 commit ID
+#   覆盖：① 无任何匹配时逐字报错；② 多个同消息提交时把全部匹配 ID 各打印一行（按目录字典序）。
+
+# 引入正则定义
+I definitions.inc
+
+# ============== 场景 A：刚 init，只有 initial commit，查一个不存在的消息 ==============
+> init
+<<<
+
+# 找不到消息完全相等的 commit
+> find no-such-message
+Found no commit with that message.
+<<<
+
+# ============== 场景 B：制造两个同消息提交，find 应各打印一行 ID ==============
+
+# 第一次 add + commit，消息都叫 "dup"
++ wug.txt wug.txt
+> add wug.txt
+<<<
+> commit "dup"
+<<<
+
+# 第二次（修改文件后）仍用消息 "dup"，制造同消息的两个 commit
++ notwug.txt notwug.txt
+> add notwug.txt
+<<<
+> commit "dup"
+<<<
+
+# find dup：应有两行 40 位 ID（两个 dup 提交，按字典序）；
+# 用 <<<* 按正则匹配，每行一个完整 40 位 hex。
+> find dup
+[0-9a-f]{40}
+[0-9a-f]{40}
+<<<*
+
+# ============== 再次确认无匹配仍报错（此时库中无 "missing" 消息） ==============
+> find missing
+Found no commit with that message.
+<<<
