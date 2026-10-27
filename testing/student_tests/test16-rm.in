@@ -1,0 +1,25 @@
+# rm：无关文件报错；仅暂存的取消暂存但留文件；已追踪的标记删除并删文件
+> init
+<<<
+
+# 既未暂存也未追踪：报错
+> rm ghost.txt
+No reason to remove the file.
+<<<
+
+# add 后未 commit 就 rm：移出 addition，工作文件保留
++ wug.txt wug.txt
+> add wug.txt
+<<<
+> rm wug.txt
+<<<
+E wug.txt
+
+# 已追踪文件 rm：加入 removal 并删除工作文件
+> add wug.txt
+<<<
+> commit "track wug"
+<<<
+> rm wug.txt
+<<<
+* wug.txt

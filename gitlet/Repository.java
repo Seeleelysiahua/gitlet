@@ -144,6 +144,10 @@ public class Repository {
                     find(operands[0]);
                     break;
 
+                case "rm":
+                    rm(operands[0]);
+                    break;
+
                 default:
                     throw Utils.error("No command with that name exists.");
             }
@@ -306,6 +310,32 @@ public class Repository {
         if (!matched) {
             throw Utils.error("Found no commit with that message.");
         }
+    }
+
+    /** rm 命令：取消文件的暂存新增，或把已追踪文件标记为暂存删除。
+     *  <p>文件既未暂存新增、也不被 current commit 追踪时抛错。
+     *  @param fileName 要移除暂存或取消追踪的文件名。 */
+    static void rm(String fileName) {
+        StagingArea stage = Utils.readObject(STAGE_FILE, StagingArea.class);
+        Commit currentCommit = getCurrentCommit();
+
+        /* 检查：暂存区与 current commit 都不含该文件，则无从删除。 */
+        boolean staged = stage.addition.containsKey(fileName);
+        boolean tracked = currentCommit.getFilenameToBlob().containsKey(fileName);
+        if (!staged && !tracked) {
+            throw Utils.error("No reason to remove the file.");
+        }
+
+        // 移出 addition。
+        stage.addition.remove(fileName);
+
+        // 被 current commit 追踪：标记暂存删除并真的删除工作文件。
+        if (tracked) {
+            stage.removal.add(fileName);
+            Utils.restrictedDelete(fileName);
+        }
+
+        Utils.writeObject(STAGE_FILE, stage);
     }
 
     /* ==================== 跨命令 helper ==================== */
