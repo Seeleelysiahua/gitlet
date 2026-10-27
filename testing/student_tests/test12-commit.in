@@ -1,0 +1,36 @@
+# test12-commit：commit 的消息校验、空暂存校验、正常提交后清空暂存区
+
+# 建库
+> init
+<<<
+
+# 还没有任何暂存改动就提交
+> commit "first"
+No changes added to the commit.
+<<<
+
+# 空消息（先暂存一个文件，让 stage 非空，确保优先报空消息错误）
++ wug.txt wug.txt
+> add wug.txt
+<<<
+> commit ""
+Please enter a commit message.
+<<<
+
+# 纯空格消息同样算空
+> commit "   "
+Please enter a commit message.
+<<<
+
+# 正常提交：无屏幕输出
+> commit "added wug"
+<<<
+
+# 提交后暂存区已清空，再次提交应报 No changes
+> commit "second"
+No changes added to the commit.
+<<<
+
+# 正常提交应产生新的 commit 对象（断言 initial 之外的对象目录非空，
+# 用 initial commit 的固定 ID 仍存在来保证旧对象没被破坏）
+E .gitlet/objects/commits/32dc2bc259de525e31f36946325d07856d31ed1a

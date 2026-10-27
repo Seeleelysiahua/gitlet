@@ -1,9 +1,13 @@
 package gitlet;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 /** 协调层：执行入口检查、按命令名分发、实现各命令业务逻辑，
  *  并读写 .gitlet 中的对象与仓库状态。
@@ -124,6 +128,10 @@ public class Repository {
                     add(operands[0]);
                     break;
 
+                case "commit":
+                    commit(operands[0]);
+                    break;
+
                 default:
                     throw Utils.error(
                             "No command with that name exists.");
@@ -235,6 +243,13 @@ public class Repository {
         }
     }
 
+    /** commit 命令：根据当前暂存区的内容提交一个新 commit。
+     *  <p>普通提交只有一个 parent，故 makeCommit 时第二 parent 传 null。
+     *  @param message 提交信息，不能为空或纯空白。 */
+    static void commit(String message) {
+        makeCommit(message, null);
+    }
+
     /* ==================== 跨命令 helper ==================== */
 
     /** 读 HEAD，得当前分支名。
@@ -256,5 +271,63 @@ public class Repository {
         String commitID = getCurrentCommitID();
         File commitFile = Utils.join(COMMITS_DIR, commitID);
         return Utils.readObject(commitFile, Commit.class);
+    }
+
+    /** 根据当前暂存区的内容提交一个新 commit，是 commit 与 merge 共用的实现。
+     *  <p>以 current commit 的完整快照为底，应用 removal 删除与 addition
+     *  更新，构造新快照并算 ID。
+     *  <p>落盘顺序为新 commit 对象、当前分支指针、最后清空暂存区。
+     *  @param message 提交信息，不能为空或纯空白。
+     *  @param secondParentID merge commit 的第二 parent ID；
+     *         普通提交传 null，参与哈希时当作空串。 */
+    static void makeCommit(String message, String secondParentID) {
+        /* 检查 1：消息不能为空或纯空白。 */
+        if (message.isBlank()) {
+            throw Utils.error("Please enter a commit message.");
+        }
+
+        StagingArea stage = Utils.readObject(STAGE_FILE, StagingArea.class);
+
+        /* 检查 2：暂存区不能为空。 */
+        if (stage.addition.isEmpty() && stage.removal.isEmpty()) {
+            throw Utils.error("No changes added to the commit.");
+        }
+
+        /* parentID 即新 commit 的 first parent。 */
+        String branchName = getCurrentBranchName();
+        String parentID = getCurrentCommitID();
+        Commit currentCommit = getCurrentCommit();
+
+        /* 新快照 = 父快照复制后，先删 removal 再覆盖 addition。 */
+        Map<String, String> newMap = new HashMap<>(currentCommit.getFilenameToBlob());
+        newMap.keySet().removeAll(stage.removal);
+        newMap.putAll(stage.addition);
+
+        Date timestamp = new Date();
+        Commit newCommit = new Commit(message, timestamp, parentID, secondParentID, newMap);
+
+        /* 哈希参数按固定顺序收集；映射部分先排序再成对加入，
+         *  secondParent 为 null 时折成空串，保证 ID 确定且可复现。 */
+        List<Object> sha1Vals = new ArrayList<>();
+        TreeMap<String, String> sortedMap = new TreeMap<>(newMap);
+        sha1Vals.add("commit");
+        sha1Vals.add(message);
+        sha1Vals.add(String.valueOf(timestamp.getTime()));
+        sha1Vals.add(parentID);
+        sha1Vals.add(secondParentID == null ? "" : secondParentID);
+        for (Map.Entry<String, String> entry : sortedMap.entrySet()) {
+            sha1Vals.add(entry.getKey());
+            sha1Vals.add(entry.getValue());
+        }
+        String newCommitID = Utils.sha1(sha1Vals);
+
+        /* 落盘：先只增的 commit 对象，再前移分支指针，最后清空暂存区。 */
+        File commitFile = Utils.join(COMMITS_DIR, newCommitID);
+        Utils.writeObject(commitFile, newCommit);
+
+        File branchFile = Utils.join(HEADS_DIR, branchName);
+        Utils.writeContents(branchFile, newCommitID);
+
+        Utils.writeObject(STAGE_FILE, new StagingArea());
     }
 }
