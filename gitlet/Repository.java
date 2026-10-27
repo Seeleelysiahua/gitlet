@@ -156,6 +156,10 @@ public class Repository {
                     rmBranch(operands[0]);
                     break;
 
+                case "checkout":
+                    checkout(operands);
+                    break;
+
                 default:
                     throw Utils.error("No command with that name exists.");
             }
@@ -371,6 +375,70 @@ public class Repository {
         branchFile.delete();
     }
 
+    /** checkout 命令：按操作数数量与 -- 位置分派。
+     *  <p>两参数为 `-- file`，三参数为 `id -- file`，单参数为分支名。
+     *  @param operands 已切去命令名的操作数，下标从 0 起，共 1~3 个。 */
+    static void checkout(String[] operands) {
+        if (operands.length == 2) {
+            if (!operands[0].equals("--")) {
+                throw Utils.error("Incorrect operands.");
+            }
+            checkoutFile(operands[1]);
+        }
+        else if (operands.length == 3) {
+            if (!operands[1].equals("--")) {
+                throw Utils.error("Incorrect operands.");
+            }
+            checkoutCommit(operands[0], operands[2]);
+        }
+        else if (operands.length == 1) {
+            checkoutBranch(operands[0]);
+        }
+        else {
+            throw Utils.error("Incorrect operands.");
+        }
+    }
+
+    /** 用 current commit 中的版本覆盖工作目录的单个文件。
+     *  @param filename 要恢复的文件名。 */
+    private static void checkoutFile(String filename) {
+        checkoutFileFromCommit(getCurrentCommit(), filename);
+    }
+
+    /** 用指定 commit 中的版本覆盖工作目录的单个文件。
+     *  @param givenID 完整或缩写的 commit ID。
+     *  @param filename 要恢复的文件名。 */
+    private static void checkoutCommit(String givenID, String filename) {
+        String commitID = resolveCommitID(givenID);
+        File commitFile = Utils.join(COMMITS_DIR, commitID);
+        Commit targetedCommit = Utils.readObject(commitFile, Commit.class);
+        checkoutFileFromCommit(targetedCommit, filename);
+    }
+
+    /** 整体切换到指定分支：替换工作目录，最后移动 HEAD 并清空暂存区。
+     *  @param branchName 要切换到的分支名。 */
+    private static void checkoutBranch(String branchName) {
+        List<String> allBranchNames = Utils.plainFilenamesIn(HEADS_DIR);
+        if (!allBranchNames.contains(branchName)) {
+            throw Utils.error("No such branch exists.");
+        }
+        String currentBranchName = getCurrentBranchName();
+        if (currentBranchName.equals(branchName)) {
+            throw Utils.error("No need to checkout the current branch.");
+        }
+        File branchFile = Utils.join(HEADS_DIR, branchName);
+        String commitID = Utils.readContentsAsString(branchFile);
+        Commit currentCommit = getCurrentCommit();
+        File targetedCommitFile = Utils.join(COMMITS_DIR, commitID);
+        Commit targetedCommit = Utils.readObject(targetedCommitFile, Commit.class);
+
+        replaceWorkingDir(currentCommit, targetedCommit);
+
+        // HEAD 最后移动、暂存区最后清空（失败保护顺序）。
+        Utils.writeContents(HEAD_FILE, branchName);
+        Utils.writeObject(STAGE_FILE, new StagingArea());
+    }
+
     /* ==================== 跨命令 helper ==================== */
 
     /** 读 HEAD，得当前分支名。
@@ -394,7 +462,7 @@ public class Repository {
         return Utils.readObject(commitFile, Commit.class);
     }
 
-    /** 根据当前暂存区的内容提交一个新 commit，是 commit 与 merge 共用的实现。
+    /** 根据当前暂存区的内容提交一个新 commit。
      *  <p>以 current commit 的完整快照为底，应用 removal 删除与 addition
      *  更新，构造新快照并算 ID。
      *  <p>落盘顺序为新 commit 对象、当前分支指针、最后清空暂存区。
@@ -452,7 +520,7 @@ public class Repository {
         Utils.writeObject(STAGE_FILE, new StagingArea());
     }
 
-    /** 按固定版式打印单个 commit 块（log 与 global-log 共用）。
+    /** 按固定版式打印单个 commit 块。
      *  <p>块依次为 ===、commit 行、仅 merge commit 有的 Merge 行、
      *  Date 行、消息行与一个空行。
      *  @param commit 要打印的 commit 对象。
@@ -471,5 +539,93 @@ public class Repository {
         Utils.message("Date: %s", dateStr);
         Utils.message(commit.getMessage());
         Utils.message("");
+    }
+
+    /** 把缩写或完整的 commit 前缀解析成唯一的完整 40 位 ID。
+     *  <p>扫描 objects/commits，匹配 0 个（不存在）或多于 1 个（歧义）都抛错。
+     *  @param givenID 用户输入的原始串，可能是缩写、可能含大写。
+     *  @return 唯一匹配的完整 commit ID。 */
+    static String resolveCommitID(String givenID) {
+        List<String> allCommitIDs = Utils.plainFilenamesIn(COMMITS_DIR);
+        String prefix = givenID.toLowerCase();
+        String matchedID = null;
+        for (String id : allCommitIDs) {
+            if (!id.startsWith(prefix)) {
+                continue;
+            }
+            if (matchedID != null) {
+                throw Utils.error("No commit with that id exists.");
+            }
+            matchedID = id;
+        }
+        if (matchedID == null) {
+            throw Utils.error("No commit with that id exists.");
+        }
+        return matchedID;
+    }
+
+    /** 把工作目录整体从 current commit 替换为目标 commit 的追踪文件。
+     *  <p>先做未追踪文件挡路检查（任何写删之前），再写入目标全部文件，
+     *  最后删除 current 追踪而目标不追踪的文件。
+     *  @param currentCommit 切换前的当前 commit。
+     *  @param targetedCommit 要切换到的目标 commit。 */
+    static void replaceWorkingDir(Commit currentCommit, Commit targetedCommit) {
+        StagingArea stage = Utils.readObject(STAGE_FILE, StagingArea.class);
+        List<String> allFileNames = Utils.plainFilenamesIn(CWD);
+        Map<String, String> currentFilenameToBlob = currentCommit.getFilenameToBlob();
+        Map<String, String> targetedFilenameToBlob = targetedCommit.getFilenameToBlob();
+
+        /* 挡路检查：目标要占用某文件名，但该文件是未追踪且会被覆盖，
+         *  且没有被暂存或追踪保护，则中止。 */
+        for (String name : allFileNames) {
+            if (stage.addition.containsKey(name)) {
+                continue;
+            }
+            if (currentFilenameToBlob.containsKey(name)
+                    && !stage.removal.contains(name)) {
+                continue;
+            }
+            if (targetedFilenameToBlob.containsKey(name)) {
+                throw Utils.error(
+                        "There is an untracked file in the way; "
+                        + "delete it, or add and commit it first.");
+            }
+        }
+
+        /* 写入目标 commit 追踪的全部文件（存在则覆盖）。 */
+        for (Map.Entry<String, String> entry
+                : targetedFilenameToBlob.entrySet()) {
+            String fileName = entry.getKey();
+            String blobID = entry.getValue();
+            File blobFile = Utils.join(BLOBS_DIR, blobID);
+            byte[] fileContent = Utils.readContents(blobFile);
+            File target = new File(fileName);
+            Utils.writeContents(target, fileContent);
+        }
+
+        /* 删除 current 追踪而目标不追踪的文件。 */
+        for (String name : allFileNames) {
+            if (!targetedFilenameToBlob.containsKey(name)
+                    && currentFilenameToBlob.containsKey(name)) {
+                Utils.restrictedDelete(name);
+            }
+        }
+    }
+
+    /* ==================== 单命令私有 helper ==================== */
+
+    /** 从给定 commit 中取出指定文件的版本，覆盖写入工作目录。
+     *  @param commit 提供文件版本的 commit。
+     *  @param filename 要恢复的文件名；该 commit 不含此文件时抛错。 */
+    private static void checkoutFileFromCommit(Commit commit, String filename) {
+        Map<String, String> filenameToBlob = commit.getFilenameToBlob();
+        String blobID = filenameToBlob.get(filename);
+        if (blobID == null) {
+            throw Utils.error("File does not exist in that commit.");
+        }
+        File blobFile = Utils.join(BLOBS_DIR, blobID);
+        byte[] fileContent = Utils.readContents(blobFile);
+        File target = new File(filename);
+        Utils.writeContents(target, fileContent);
     }
 }

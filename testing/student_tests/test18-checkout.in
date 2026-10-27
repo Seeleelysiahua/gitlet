@@ -1,0 +1,56 @@
+# checkout：用法一恢复单文件、用法三切换分支、各错误分支
+> init
+<<<
+
+# 基础提交：wug.txt 入库
++ wug.txt wug.txt
+> add wug.txt
+<<<
+> commit "add wug"
+<<<
+
+# 建 feature 分支后，在 master 上把 wug.txt 改成 notwug 内容并提交
+> branch feature
+<<<
++ wug.txt notwug.txt
+> add wug.txt
+<<<
+> commit "change wug"
+<<<
+
+# 用法一：把工作目录的 wug.txt 改成 wug 内容（与 current 的 notwug 不同），
+# checkout -- 恢复成 current commit 的 notwug 内容
++ wug.txt wug.txt
+> checkout -- wug.txt
+<<<
+= wug.txt notwug.txt
+
+# 用法一：current commit 中不存在的文件报错
+> checkout -- ghost.txt
+File does not exist in that commit.
+<<<
+
+# 错误形态：两参数但缺 --
+> checkout x wug.txt
+Incorrect operands.
+<<<
+
+# 用法三：切到 feature（指向旧提交），wug.txt 应回到旧内容
+> checkout feature
+<<<
+= wug.txt wug.txt
+
+# 不能切回当前分支
+> checkout feature
+No need to checkout the current branch.
+<<<
+
+# 切不存在的分支报错
+> checkout ghost
+No such branch exists.
+<<<
+
+# 切回 master，wug.txt 变为新内容（notwug 版）
+> checkout master
+<<<
+= wug.txt notwug.txt
