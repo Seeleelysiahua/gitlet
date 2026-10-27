@@ -34,3 +34,15 @@ File does not exist.
 
 # 失败后状态不变：blob 仍在
 E .gitlet/objects/blobs/8d1acb56b74b1cf587046eaf6274cd2d5b221fab
+
+# add 取消 removal 标记：先把文件追踪并提交，再 rm 标记删除，
+# 重新放回同内容文件并 add，应取消删除、重新暂存且无报错
+> commit "track wug"
+<<<
+> rm wug.txt
+<<<
+* wug.txt
++ wug.txt wug.txt
+> add wug.txt
+<<<
+E wug.txt
