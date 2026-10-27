@@ -1,0 +1,31 @@
+I definitions.inc
+
+# 建库并制造两个提交
+> init
+<<<
++ wug.txt wug.txt
+> add wug.txt
+<<<
+> commit "first wug"
+<<<
++ notwug.txt notwug.txt
+> add notwug.txt
+<<<
+> commit "second file"
+<<<
+
+# log 应有三块：second file → first wug → initial commit
+> log
+===
+${COMMIT_HEAD}
+second file
+
+===
+${COMMIT_HEAD}
+first wug
+
+===
+${COMMIT_HEAD}
+initial commit
+
+<<<*

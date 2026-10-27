@@ -1,11 +1,13 @@
 package gitlet;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -132,6 +134,10 @@ public class Repository {
                     commit(operands[0]);
                     break;
 
+                case "log":
+                    log();
+                    break;
+
                 default:
                     throw Utils.error(
                             "No command with that name exists.");
@@ -250,6 +256,21 @@ public class Repository {
         makeCommit(message, null);
     }
 
+    /** log 命令：从 current commit 沿 firstParent 回溯到 initial commit，
+     *  逐块打印提交信息（含两端）。全程只读，不修改任何状态。 */
+    static void log() {
+        String commitID = getCurrentCommitID();
+        Commit currentCommit = getCurrentCommit();
+        while (commitID != null) {
+            printCommit(currentCommit, commitID);
+            commitID = currentCommit.getFirstParent();
+            if (commitID != null) {
+                File commitFile = Utils.join(COMMITS_DIR, commitID);
+                currentCommit = Utils.readObject(commitFile, Commit.class);
+            }
+        }
+    }
+
     /* ==================== 跨命令 helper ==================== */
 
     /** 读 HEAD，得当前分支名。
@@ -329,5 +350,26 @@ public class Repository {
         Utils.writeContents(branchFile, newCommitID);
 
         Utils.writeObject(STAGE_FILE, new StagingArea());
+    }
+
+    /** 按固定版式打印单个 commit 块（log 与 global-log 共用）。
+     *  <p>块依次为 ===、commit 行、仅 merge commit 有的 Merge 行、
+     *  Date 行、消息行与一个空行。
+     *  @param commit 要打印的 commit 对象。
+     *  @param commitID 该对象对应的完整 40 位 commit ID。 */
+    static void printCommit(Commit commit, String commitID) {
+        Utils.message("===");
+        Utils.message("commit %s", commitID);
+        if (commit.getSecondParent() != null) {
+            String firstParentShortSha = commit.getFirstParent().substring(0, 7);
+            String secondParentShortSha = commit.getSecondParent().substring(0, 7);
+            Utils.message("Merge: %s %s", firstParentShortSha, secondParentShortSha);
+        }
+        String dateStr = new SimpleDateFormat(
+                "EEE MMM d HH:mm:ss yyyy Z", Locale.US)
+                .format(commit.getTimestamp());
+        Utils.message("Date: %s", dateStr);
+        Utils.message(commit.getMessage());
+        Utils.message("");
     }
 }
