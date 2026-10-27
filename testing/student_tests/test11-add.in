@@ -1,0 +1,36 @@
+# test11-add：add 基础行为
+# 覆盖：新文件暂存成功（blob 落盘）、重复 add 幂等无输出、
+# add 不存在文件逐字报错、失败后状态不变
+
+# 初始化仓库（init 成功无屏幕输出）
+> init
+<<<
+
+# 准备工作目录文件：把 testing/src/wug.txt 复制成工作目录的 wug.txt
++ wug.txt wug.txt
+
+# 第一次 add：成功，无屏幕输出
+> add wug.txt
+<<<
+
+# 断言 blob 以确定 ID 落在 blobs 目录
+E .gitlet/objects/blobs/8d1acb56b74b1cf587046eaf6274cd2d5b221fab
+
+# 断言 commits 目录里仍只有 initial commit
+# 说明 add 没有误写 commit 对象
+E .gitlet/objects/commits/32dc2bc259de525e31f36946325d07856d31ed1a
+
+# 重复 add 同一未改动文件：幂等，仍无屏幕输出
+> add wug.txt
+<<<
+
+# 再断言 blob 仍在
+E .gitlet/objects/blobs/8d1acb56b74b1cf587046eaf6274cd2d5b221fab
+
+# add 一个不存在的文件：逐字报错
+> add nonexistent.txt
+File does not exist.
+<<<
+
+# 失败后状态不变：blob 仍在
+E .gitlet/objects/blobs/8d1acb56b74b1cf587046eaf6274cd2d5b221fab
