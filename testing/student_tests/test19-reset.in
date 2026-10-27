@@ -1,0 +1,29 @@
+# reset：回到 initial commit 清空工作目录
+> init
+<<<
+
+# 提交一个文件，使当前快照非空
++ wug.txt wug.txt
+> add wug.txt
+<<<
+> commit "add wug"
+<<<
+E wug.txt
+
+# reset 回固定的 initial commit：无输出，工作目录文件被删除
+> reset 32dc2bc259de525e31f36946325d07856d31ed1a
+<<<
+* wug.txt
+
+# HEAD 仍是 master，指针回到 initial（不切分支）
+E .gitlet/HEAD
+
+# 不存在的 ID：报错
+> reset deadbeefdeadbeefdeadbeefdeadbeefdeadbeef
+No commit with that id exists.
+<<<
+
+# reset 到非法短前缀（同样解析失败）
+> reset zzz
+No commit with that id exists.
+<<<

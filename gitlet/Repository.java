@@ -160,6 +160,10 @@ public class Repository {
                     checkout(operands);
                     break;
 
+                case "reset":
+                    reset(operands[0]);
+                    break;
+
                 default:
                     throw Utils.error("No command with that name exists.");
             }
@@ -436,6 +440,26 @@ public class Repository {
 
         // HEAD 最后移动、暂存区最后清空（失败保护顺序）。
         Utils.writeContents(HEAD_FILE, branchName);
+        Utils.writeObject(STAGE_FILE, new StagingArea());
+    }
+
+    /** 把当前分支指针移动到指定 commit，并把工作目录恢复成该 commit 的快照。
+     *  <p>替换后再前移指针、清空暂存区。
+     *  @param givenID 完整或缩写的目标 commit ID。 */
+    static void reset(String givenID) {
+        String commitID = resolveCommitID(givenID);
+
+        File targetCommitFile = Utils.join(COMMITS_DIR, commitID);
+        Commit targetedCommit =
+                Utils.readObject(targetCommitFile, Commit.class);
+        Commit currentCommit = getCurrentCommit();
+        String branchName = getCurrentBranchName();
+
+        // 全部检查在其中完成，通过后才动指针与暂存区。
+        replaceWorkingDir(currentCommit, targetedCommit);
+
+        File branchFile = Utils.join(HEADS_DIR, branchName);
+        Utils.writeContents(branchFile, commitID);
         Utils.writeObject(STAGE_FILE, new StagingArea());
     }
 
