@@ -138,6 +138,10 @@ public class Repository {
                     log();
                     break;
 
+                case "global-log":
+                    globalLog();
+                    break;
+
                 default:
                     throw Utils.error(
                             "No command with that name exists.");
@@ -268,6 +272,18 @@ public class Repository {
                 File commitFile = Utils.join(COMMITS_DIR, commitID);
                 currentCommit = Utils.readObject(commitFile, Commit.class);
             }
+        }
+    }
+
+    /** global-log 命令：列出 objects/commits 下的全部 commit 并逐块打印，
+     *  不依赖 current commit 与分支。
+     *  <p>输出顺序取目录文件名的字典序。 */
+    static void globalLog() {
+        List<String> allCommitIDs = Utils.plainFilenamesIn(COMMITS_DIR);
+        for (String id : allCommitIDs) {
+            File commitFile = Utils.join(COMMITS_DIR, id);
+            Commit commit = Utils.readObject(commitFile, Commit.class);
+            printCommit(commit, id);
         }
     }
 
