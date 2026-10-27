@@ -2,6 +2,8 @@ package gitlet;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
 
 /** 协调层：执行入口检查、按命令名分发、实现各命令业务逻辑，
  *  并读写 .gitlet 中的对象与仓库状态。
@@ -141,7 +143,32 @@ public class Repository {
 
     /* ==================== 命令方法 ==================== */
 
-    /** init 命令：地基阶段占位，尚未实现。 */
+    /** init 命令：在当前目录创建 Gitlet 版本控制系统。
+     *  <p>自动建立 initial commit（消息 "initial commit"、
+     *  时间为 Unix epoch）、master 分支指针、HEAD 与空暂存区。
+     *  <p>已在初始化目录中再次执行时抛错，不产生任何改动。 */
     static void init() {
+        /* 检查：已初始化则失败。 */
+        if (GITLET_DIR.exists()) {
+            throw Utils.error("A Gitlet version-control system already exists in the current directory.");
+        }
+
+        /* 内存中构造 initial commit 与它的 ID。 */
+        Date epoch = new Date(0);
+        Commit initialCommit = new Commit("initial commit", epoch,
+                null, null, new HashMap<String, String>());
+        String commitID = Utils.sha1("commit", "initial commit", String.valueOf(epoch.getTime()), "", "");
+
+        /* 建目录树。 */
+        COMMITS_DIR.mkdirs();
+        BLOBS_DIR.mkdirs();
+        HEADS_DIR.mkdirs();
+        REMOTE_REFS_DIR.mkdirs();
+
+        /* 落盘顺序：先写尚无引用的 commit 对象，再写分支指针、HEAD，最后写空暂存区。 */
+        Utils.writeObject(Utils.join(COMMITS_DIR, commitID), initialCommit);
+        Utils.writeContents(Utils.join(HEADS_DIR, "master"), commitID);
+        Utils.writeContents(HEAD_FILE, "master");
+        Utils.writeObject(STAGE_FILE, new StagingArea());
     }
 }

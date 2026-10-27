@@ -1,0 +1,24 @@
+# 首次 init：无输出，建立 .gitlet 骨架
+> init
+<<<
+
+# 断言关键路径都存在
+E .gitlet
+E .gitlet/HEAD
+E .gitlet/stage
+E .gitlet/refs/heads/master
+E .gitlet/objects/commits
+E .gitlet/objects/blobs
+
+# 再次 init 报错
+> init
+A Gitlet version-control system already exists in the current directory.
+<<<
+
+# 报错后目录结构仍在
+E .gitlet
+E .gitlet/HEAD
+E .gitlet/stage
+E .gitlet/refs/heads/master
+E .gitlet/objects/commits
+E .gitlet/objects/blobs
