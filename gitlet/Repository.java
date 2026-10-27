@@ -148,6 +148,14 @@ public class Repository {
                     rm(operands[0]);
                     break;
 
+                case "branch":
+                    branch(operands[0]);
+                    break;
+
+                case "rm-branch":
+                    rmBranch(operands[0]);
+                    break;
+
                 default:
                     throw Utils.error("No command with that name exists.");
             }
@@ -336,6 +344,31 @@ public class Repository {
         }
 
         Utils.writeObject(STAGE_FILE, stage);
+    }
+
+    /** branch 命令：新建一个指向当前 commit 的分支指针，不切换分支。
+     *  @param name 要创建的分支名；同名分支已存在时抛错。 */
+    static void branch(String name) {
+        File branchFile = Utils.join(HEADS_DIR, name);
+        if (branchFile.exists()) {
+            throw Utils.error("A branch with that name already exists.");
+        }
+        String commitID = getCurrentCommitID();
+        Utils.writeContents(branchFile, commitID);
+    }
+
+    /** rm-branch 命令：删除一个非当前分支的指针文件。
+     *  @param branchName 要删除的分支名；不存在或正是当前分支时抛错。 */
+    static void rmBranch(String branchName) {
+        File branchFile = Utils.join(HEADS_DIR, branchName);
+        if (!branchFile.exists()) {
+            throw Utils.error("A branch with that name does not exist.");
+        }
+        String currentBranchName = getCurrentBranchName();
+        if (currentBranchName.equals(branchName)) {
+            throw Utils.error("Cannot remove the current branch.");
+        }
+        branchFile.delete();
     }
 
     /* ==================== 跨命令 helper ==================== */

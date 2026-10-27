@@ -1,0 +1,29 @@
+# branch / rm-branch：建指针、重名报错、删除规则
+> init
+<<<
+
+# 新建分支 other：指针文件存在，无输出
+> branch other
+<<<
+E .gitlet/refs/heads/other
+
+# 重名报错
+> branch other
+A branch with that name already exists.
+<<<
+
+# 删除不存在的分支报错
+> rm-branch ghost
+A branch with that name does not exist.
+<<<
+
+# 不能删当前分支 master
+> rm-branch master
+Cannot remove the current branch.
+<<<
+
+# 删除 other：指针文件消失，master 保留
+> rm-branch other
+<<<
+* .gitlet/refs/heads/other
+E .gitlet/refs/heads/master
