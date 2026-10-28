@@ -1,0 +1,15 @@
+# rm-remote：删除不存在的远程名报错（remotes 文件尚不存在时同样）
+> init
+<<<
+
+# 从未登记任何远程，删除报错
+> rm-remote ghost
+A remote with that name does not exist.
+<<<
+
+# 登记一个无关远程后，删除别的名字仍报错
+> add-remote origin some/dir
+<<<
+> rm-remote ghost
+A remote with that name does not exist.
+<<<

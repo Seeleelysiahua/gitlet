@@ -165,6 +165,14 @@ public class Repository {
                     merge(operands[0]);
                     break;
 
+                case "add-remote":
+                    addRemote(operands[0], operands[1]);
+                    break;
+
+                case "rm-remote":
+                    rmRemote(operands[0]);
+                    break;
+
                 default:
                     throw Utils.error("No command with that name exists.");
             }
@@ -729,6 +737,30 @@ public class Repository {
         }
     }
 
+    /** add-remote 命令：登记一个远程名与其 .gitlet 目录路径的映射。
+     *  @param remoteName 远程名，重名时报错。
+     *  @param remotePath 远程 .gitlet 目录路径。 */
+    static void addRemote(String remoteName, String remotePath) {
+        HashMap<String, String> remotes = readRemotes();
+        if (remotes.containsKey(remoteName)) {
+            throw Utils.error("A remote with that name already exists.");
+        }
+        // 正斜杠统一换成本机操作系统的标准分隔符
+        remotes.put(remoteName, remotePath.replace("/", File.separator));
+        Utils.writeObject(REMOTES_FILE, remotes);
+    }
+
+    /** rm-remote 命令：删除一个已登记的远程名映射。
+     *  @param remoteName 远程名，不存在时报错。 */
+    static void rmRemote(String remoteName) {
+        HashMap<String, String> remotes = readRemotes();
+        if (!remotes.containsKey(remoteName)) {
+            throw Utils.error("A remote with that name does not exist.");
+        }
+        remotes.remove(remoteName);
+        Utils.writeObject(REMOTES_FILE, remotes);
+    }
+
     /* ==================== 跨命令 helper ==================== */
 
     /** 读 HEAD，得当前分支名。
@@ -900,6 +932,16 @@ public class Repository {
                 Utils.restrictedDelete(name);
             }
         }
+    }
+
+    /** 读 .gitlet/remotes 得远程名到路径的映射，文件不存在时返回空映射。
+     *  @return 远程映射；init 不建此文件，首次 add-remote 才创建。 */
+    @SuppressWarnings("unchecked")
+    static HashMap<String, String> readRemotes() {
+        if (REMOTES_FILE.exists()) {
+            return Utils.readObject(REMOTES_FILE, HashMap.class);
+        }
+        return new HashMap<>();
     }
 
     /* ==================== 单命令私有 helper ==================== */

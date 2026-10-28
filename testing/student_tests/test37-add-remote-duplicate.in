@@ -1,0 +1,14 @@
+# add-remote：重名报错，且失败不破坏已登记的条目
+> init
+<<<
+> add-remote origin some/dir/path
+<<<
+
+# 同名再登记报错
+> add-remote origin another/dir
+A remote with that name already exists.
+<<<
+
+# 已登记的 origin 仍在：rm 它应成功（无输出），反证重名 add 未覆盖
+> rm-remote origin
+<<<

@@ -1,0 +1,13 @@
+# rm-remote：删除已登记远程，删后可用同名重新登记
+> init
+<<<
+> add-remote origin some/dir/path
+<<<
+
+# 删除成功无输出
+> rm-remote origin
+<<<
+
+# 删后重加同名不报错，证明条目确实被移除
+> add-remote origin new/dir/path
+<<<
