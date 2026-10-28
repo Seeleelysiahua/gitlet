@@ -1,0 +1,53 @@
+# status：空仓库只有 master；改动后各类文件进对应小节
+> init
+<<<
+
+# 空仓库：只有 Branches 节有 *master，其余小节为空
+> status
+=== Branches ===
+*master
+
+=== Staged Files ===
+
+=== Removed Files ===
+
+=== Modifications Not Staged For Commit ===
+
+=== Untracked Files ===
+
+<<<
+
+# 追踪 wug.txt 并提交，再造各类改动
++ wug.txt wug.txt
+> add wug.txt
+<<<
+> commit "add wug"
+<<<
+> branch zbranch
+<<<
+
+# 新文件暂存（Staged）
++ added.txt notwug.txt
+> add added.txt
+<<<
+
+# 已追踪文件标记删除（Removed）
+> rm wug.txt
+<<<
+
+> status
+=== Branches ===
+*master
+zbranch
+
+=== Staged Files ===
+added.txt
+
+=== Removed Files ===
+wug.txt
+
+=== Modifications Not Staged For Commit ===
+
+=== Untracked Files ===
+
+<<<

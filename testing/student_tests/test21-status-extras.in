@@ -1,0 +1,32 @@
+# status：modified、deleted、untracked 三类判定
+> init
+<<<
++ wug.txt wug.txt
+> add wug.txt
+<<<
++ other.txt notwug.txt
+> add other.txt
+<<<
+> commit "base"
+<<<
+
+# wug.txt 改（modified）；other.txt 从工作目录删掉（deleted）；新建 untracked
++ wug.txt notwug.txt
+- other.txt
++ untracked.txt wug.txt
+> status
+=== Branches ===
+*master
+
+=== Staged Files ===
+
+=== Removed Files ===
+
+=== Modifications Not Staged For Commit ===
+other.txt (deleted)
+wug.txt (modified)
+
+=== Untracked Files ===
+untracked.txt
+
+<<<

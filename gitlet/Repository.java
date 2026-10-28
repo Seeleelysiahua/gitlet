@@ -2,14 +2,7 @@ package gitlet;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 /** 协调层：执行入口检查、按命令名分发、实现各命令业务逻辑，
  *  并读写 .gitlet 中的对象与仓库状态。
@@ -162,6 +155,10 @@ public class Repository {
 
                 case "reset":
                     reset(operands[0]);
+                    break;
+
+                case "status":
+                    status();
                     break;
 
                 default:
@@ -461,6 +458,106 @@ public class Repository {
         File branchFile = Utils.join(HEADS_DIR, branchName);
         Utils.writeContents(branchFile, commitID);
         Utils.writeObject(STAGE_FILE, new StagingArea());
+    }
+
+    /** status 命令：按固定五节打印分支、暂存区、未暂存改动与未追踪文件。
+     *  <p>各文件名按字典序输出。 */
+    static void status() {
+        List<String> allBranches = Utils.plainFilenamesIn(HEADS_DIR);
+        String branchName = getCurrentBranchName();
+        StagingArea stage = Utils.readObject(STAGE_FILE, StagingArea.class);
+        Commit currentCommit = getCurrentCommit();
+        Map<String, String> currentFilenameToBlob = currentCommit.getFilenameToBlob();
+
+        // 工作目录每个普通文件的内容算出 blob ID，供内容比较。
+        List<String> workFiles = Utils.plainFilenamesIn(CWD);
+        Map<String, String> workID = new HashMap<>();
+        for (String filename : workFiles) {
+            File file = new File(filename);
+            byte[] fileContent = Utils.readContents(file);
+            workID.put(filename, Utils.sha1("blob", fileContent));
+        }
+
+        // 遍历范围：工作目录、addition、removal、current commit 四者并集。
+        Set<String> union = new HashSet<>();
+        union.addAll(workFiles);
+        union.addAll(stage.addition.keySet());
+        union.addAll(stage.removal);
+        union.addAll(currentFilenameToBlob.keySet());
+
+        // 值 true=modified，false=deleted；两个结果容器有序，直接按序输出。
+        TreeMap<String, Boolean> modifiedNotStaged = new TreeMap<>();
+        TreeSet<String> untracked = new TreeSet<>();
+
+        for (String name : union) {
+            boolean inW = workID.containsKey(name);
+            boolean inA = stage.addition.containsKey(name);
+            boolean inR = stage.removal.contains(name);
+            boolean inC = currentFilenameToBlob.containsKey(name);
+
+            // 判断该文件在当前视图（HEAD + 暂存区）下是否应被追踪：
+            // 1. 在暂存区中新增 (inA)
+            // 2. 在最新提交中且未被暂存删除 (inC && !inR)
+            boolean expectedExists = inA || (inC && !inR);
+
+            if (inW) {
+                if (expectedExists) {
+                    String expectedID = inA
+                            ? stage.addition.get(name)
+                            : currentFilenameToBlob.get(name);
+                    if (!workID.get(name).equals(expectedID)) {
+                        modifiedNotStaged.put(name, true);
+                    }
+                }
+                else {
+                    untracked.add(name);
+                }
+            }
+            else if (inA || (inC && !inR)) {
+                modifiedNotStaged.put(name, false);
+            }
+        }
+
+        // 五节输出：每节标题、内容（可能为空）、结尾空行。
+        Utils.message("=== Branches ===");
+        for (String branch : allBranches) {
+            if (branchName.equals(branch)) {
+                Utils.message("*%s", branch);
+            }
+            else {
+                Utils.message("%s", branch);
+            }
+        }
+        Utils.message("");
+
+        Utils.message("=== Staged Files ===");
+        for (String filename : stage.addition.keySet()) {
+            Utils.message("%s", filename);
+        }
+        Utils.message("");
+
+        Utils.message("=== Removed Files ===");
+        for (String filename : stage.removal) {
+            Utils.message("%s", filename);
+        }
+        Utils.message("");
+
+        Utils.message("=== Modifications Not Staged For Commit ===");
+        for (String name : modifiedNotStaged.keySet()) {
+            if (modifiedNotStaged.get(name)) {
+                Utils.message("%s (modified)", name);
+            }
+            else {
+                Utils.message("%s (deleted)", name);
+            }
+        }
+        Utils.message("");
+
+        Utils.message("=== Untracked Files ===");
+        for (String name : untracked) {
+            Utils.message("%s", name);
+        }
+        Utils.message("");
     }
 
     /* ==================== 跨命令 helper ==================== */
