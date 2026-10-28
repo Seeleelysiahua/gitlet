@@ -1,0 +1,48 @@
+# merge：当前分支是被合并分支祖先，fast-forward
+> init
+<<<
+
+# master 提交基线后建 other
++ base.txt mbase.txt
+> add base.txt
+<<<
+> commit "base"
+<<<
+> branch other
+<<<
+
+# 切到 other 追加提交（新增一个文件）
+> checkout other
+<<<
++ added.txt monlygiven.txt
+> add added.txt
+<<<
+> commit "other work"
+<<<
+
+# 回到落后的 master，合并 other 应快进
+> checkout master
+<<<
+> merge other
+Current branch fast-forwarded.
+<<<
+
+# 工作目录换成 other 快照：基线文件与新增文件都在
+= base.txt mbase.txt
+= added.txt monlygiven.txt
+
+# 仍在 master 分支上（HEAD 未指向 other），快进后工作区干净
+> status
+=== Branches ===
+*master
+other
+
+=== Staged Files ===
+
+=== Removed Files ===
+
+=== Modifications Not Staged For Commit ===
+
+=== Untracked Files ===
+
+<<<

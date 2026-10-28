@@ -1,0 +1,36 @@
+# merge：暂存区非空时报错，暂存内容与指针保持不变
+> init
+<<<
++ base.txt mbase.txt
+> add base.txt
+<<<
+> commit "base"
+<<<
+> branch other
+<<<
+
+# 暂存一个新文件但不提交
++ staged.txt mcur.txt
+> add staged.txt
+<<<
+
+> merge other
+You have uncommitted changes.
+<<<
+
+# 暂存仍在：Staged 节列出 staged.txt
+> status
+=== Branches ===
+*master
+other
+
+=== Staged Files ===
+staged.txt
+
+=== Removed Files ===
+
+=== Modifications Not Staged For Commit ===
+
+=== Untracked Files ===
+
+<<<

@@ -1,0 +1,28 @@
+# merge：被合并分支是当前分支祖先，零改动
+> init
+<<<
+
+# master 提交基线，建 other 停在此处
++ base.txt mbase.txt
+> add base.txt
+<<<
+> commit "base"
+<<<
+> branch other
+<<<
+
+# master 再追加一次提交，other 成为 master 的祖先
++ extra.txt mcur.txt
+> add extra.txt
+<<<
+> commit "master ahead"
+<<<
+
+# 合并祖先分支：只打印消息，不动状态
+> merge other
+Given branch is an ancestor of the current branch.
+<<<
+
+# 工作区两文件都在，内容不变
+= base.txt mbase.txt
+= extra.txt mcur.txt

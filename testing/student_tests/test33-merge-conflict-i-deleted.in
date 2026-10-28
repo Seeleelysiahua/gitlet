@@ -1,0 +1,34 @@
+# merge 冲突特例：current 删除、given 修改，HEAD 段为空
+> init
+<<<
++ f.txt mbase.txt
+> add f.txt
+<<<
+> commit "base"
+<<<
+> branch other
+<<<
+
+# current 侧删除 f.txt
+> rm f.txt
+<<<
+> commit "current deletes"
+<<<
+
+# given 侧把 f.txt 改成新内容
+> checkout other
+<<<
++ f.txt mdel-g.txt
+> add f.txt
+<<<
+> commit "given edits"
+<<<
+
+> checkout master
+<<<
+> merge other
+Encountered a merge conflict.
+<<<
+
+# HEAD 段为空的五段内容
+= f.txt mexpect-ideleted.txt

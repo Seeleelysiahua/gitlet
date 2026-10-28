@@ -1,0 +1,14 @@
+# merge：被合并分支不存在，报错
+> init
+<<<
++ base.txt mbase.txt
+> add base.txt
+<<<
+> commit "base"
+<<<
+
+> merge ghost
+A branch with that name does not exist.
+<<<
+
+= base.txt mbase.txt

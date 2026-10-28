@@ -161,6 +161,10 @@ public class Repository {
                     status();
                     break;
 
+                case "merge":
+                    merge(operands[0]);
+                    break;
+
                 default:
                     throw Utils.error("No command with that name exists.");
             }
@@ -560,6 +564,171 @@ public class Repository {
         Utils.message("");
     }
 
+    /** merge 命令：把指定分支并入当前分支。
+     *  @param branchName 被合并分支名；先查本地分支，再查远程跟踪分支。 */
+    static void merge(String branchName) {
+        StagingArea stage = Utils.readObject(STAGE_FILE, StagingArea.class);
+        if (!stage.addition.isEmpty() || !stage.removal.isEmpty()) {
+            throw Utils.error("You have uncommitted changes.");
+        }
+
+        // 被合并分支指针：本地 heads 没有时查远程分支。
+        File branchFile = Utils.join(HEADS_DIR, branchName);
+        if (!branchFile.exists()) {
+            branchFile = Utils.join(REMOTE_REFS_DIR, branchName);
+        }
+        if (!branchFile.exists()) {
+            throw Utils.error("A branch with that name does not exist.");
+        }
+
+        String currentBranchName = getCurrentBranchName();
+        if (currentBranchName.equals(branchName)) {
+            throw Utils.error("Cannot merge a branch with itself.");
+        }
+
+        String currentCommitID = getCurrentCommitID();
+        Commit currentCommit = getCurrentCommit();
+        String givenCommitID = Utils.readContentsAsString(branchFile);
+        File givenCommitFile = Utils.join(COMMITS_DIR, givenCommitID);
+        Commit givenCommit = Utils.readObject(givenCommitFile, Commit.class);
+
+        String splitPointID = findSplitPoint(currentCommitID, givenCommitID);
+
+        // 边界一：被合并分支已被当前分支包含，无需合并。
+        if (splitPointID.equals(givenCommitID)) {
+            Utils.message("Given branch is an ancestor of the current branch.");
+            return;
+        }
+
+        // 边界二：当前分支可直接快进到被合并分支 head。
+        if (splitPointID.equals(currentCommitID)) {
+            replaceWorkingDir(currentCommit, givenCommit);
+            File currentBranchFile = Utils.join(HEADS_DIR, currentBranchName);
+            Utils.writeContents(currentBranchFile, givenCommitID);
+            Utils.writeObject(STAGE_FILE, new StagingArea());
+            Utils.message("Current branch fast-forwarded.");
+            return;
+        }
+
+        // 正常 merge：以 split point 为共同基线做三路合并。
+        File splitCommitFile = Utils.join(COMMITS_DIR, splitPointID);
+        Commit splitCommit = Utils.readObject(splitCommitFile, Commit.class);
+        mergeSnapshots(splitCommit, currentCommit, givenCommit,
+                stage, branchName, currentBranchName, givenCommitID);
+    }
+
+    /** 对 split/current/given 三个快照做逐文件三路合并并落盘、自动提交。
+     *  @param splitCommit 两分支的共同基线快照。
+     *  @param currentCommit 当前分支 head 快照。
+     *  @param givenCommit 被合并分支 head 快照。
+     *  @param stage 已读出的空暂存区，合并改动累积其中。
+     *  @param branchName 被合并分支名，用于拼提交信息。
+     *  @param currentBranchName 当前分支名，用于拼提交信息。
+     *  @param givenCommitID 被合并分支 head ID，作 merge commit 的第二 parent。 */
+    private static void mergeSnapshots(Commit splitCommit, Commit currentCommit,
+                                       Commit givenCommit, StagingArea stage,
+                                       String branchName, String currentBranchName,
+                                       String givenCommitID) {
+        Map<String, String> splitBlob = splitCommit.getFilenameToBlob();
+        Map<String, String> currentBlob = currentCommit.getFilenameToBlob();
+        Map<String, String> givenBlob = givenCommit.getFilenameToBlob();
+
+        // 遍历范围取三快照文件名并集，有序以保证处理顺序确定。
+        TreeSet<String> names = new TreeSet<>(splitBlob.keySet());
+        names.addAll(currentBlob.keySet());
+        names.addAll(givenBlob.keySet());
+
+        // 待写工作文件 文件名→blob ID。
+        Map<String, String> writeBlob = new HashMap<>();
+        // 冲突新 blob 的 ID→合并文本
+        Map<String, String> newBlobContents = new HashMap<>();
+        // 待删文件。
+        List<String> deletions = new ArrayList<>();
+        boolean conflict = false;
+
+        for (String name : names) {
+            String s = splitBlob.get(name);
+            String c = currentBlob.get(name);
+            String g = givenBlob.get(name);
+            boolean currentChanged = !Objects.equals(c, s);
+            boolean givenChanged = !Objects.equals(g, s);
+
+            // given 未动：保留 current 现状（含两边都未动）。
+            if (!givenChanged) {
+                continue;
+            }
+            // 仅 given 改动：直接采纳 given 的新增/修改或删除。
+            if (!currentChanged) {
+                if (g != null) {
+                    stage.addition.put(name, g);
+                    writeBlob.put(name, g);
+                }
+                else {
+                    stage.removal.add(name);
+                    deletions.add(name);
+                }
+                continue;
+            }
+            // 两边都改且结果一致：无需动作（含同删）。
+            if (Objects.equals(c, g)) {
+                continue;
+            }
+
+            // 两边都改且结果不一致：冲突，拼五段内容造新 blob。
+            String currentText = c == null
+                    ? ""
+                    : Utils.readContentsAsString(Utils.join(BLOBS_DIR, c));
+            String givenText = g == null
+                    ? ""
+                    : Utils.readContentsAsString(Utils.join(BLOBS_DIR, g));
+            String merged = "<<<<<<< HEAD\n" + currentText
+                    + "=======\n" + givenText + ">>>>>>>\n";
+            String newBlobID = Utils.sha1("blob", merged);
+            newBlobContents.put(newBlobID, merged);
+            writeBlob.put(name, newBlobID);
+            stage.addition.put(name, newBlobID);
+            conflict = true;
+        }
+
+        // 检查：要写删的文件在 current 中不受追踪、却已存在于工作目录。
+        Set<String> touched = new HashSet<>(writeBlob.keySet());
+        touched.addAll(deletions);
+        for (String name : touched) {
+            File workingFile = new File(name);
+            if (!currentBlob.containsKey(name) && workingFile.exists()) {
+                throw Utils.error("There is an untracked file in the way; "
+                        + "delete it, or add and commit it first.");
+            }
+        }
+
+        // 落盘：先只增的冲突 blob，再写工作文件，最后删文件。
+        for (Map.Entry<String, String> entry : newBlobContents.entrySet()) {
+            File blobFile = Utils.join(BLOBS_DIR, entry.getKey());
+            Utils.writeContents(blobFile, entry.getValue());
+        }
+        for (Map.Entry<String, String> entry : writeBlob.entrySet()) {
+            File blobFile = Utils.join(BLOBS_DIR, entry.getValue());
+            byte[] content = Utils.readContents(blobFile);
+            File workingFile = new File(entry.getKey());
+            Utils.writeContents(workingFile, content);
+        }
+        for (String name : deletions) {
+            Utils.restrictedDelete(name);
+        }
+
+        // 有合并改动才写回暂存区；零动作时交给 makeCommit 的空暂存检查报错。
+        if (!stage.addition.isEmpty() || !stage.removal.isEmpty()) {
+            Utils.writeObject(STAGE_FILE, stage);
+        }
+        String message = "Merged " + branchName + " into "
+                + currentBranchName + ".";
+        makeCommit(message, givenCommitID);
+
+        if (conflict) {
+            Utils.message("Encountered a merge conflict.");
+        }
+    }
+
     /* ==================== 跨命令 helper ==================== */
 
     /** 读 HEAD，得当前分支名。
@@ -748,5 +917,86 @@ public class Repository {
         byte[] fileContent = Utils.readContents(blobFile);
         File target = new File(filename);
         Utils.writeContents(target, fileContent);
+    }
+
+    /** 求两个 head 的 split point，即二者最新（距 initial 最远）的公共祖先。
+     *  @param currentCommitID 当前分支 head 的 commit ID。
+     *  @param givenCommitID 被合并分支 head 的 commit ID。
+     *  @return split point 的完整 commit ID。 */
+    private static String findSplitPoint(String currentCommitID, String givenCommitID) {
+        Map<String, Integer> depth = new HashMap<>();
+        Set<String> ancestors = new HashSet<>();
+        collectAncestors(currentCommitID, depth, ancestors);
+
+        Set<String> visited = new HashSet<>();
+        return deepestCommonAncestor(givenCommitID, ancestors, depth, visited);
+    }
+
+    /** 沿 parent 深度优先收集某 commit 的全部祖先（含自身），
+     *  并记录每个祖先到 initial commit 的最长距离。
+     *  @param id 当前遍历到的 commit ID。
+     *  @param depth 待填的 commit ID→到 initial 最长距离映射。
+     *  @param ancestors 待填的当前分支祖先集合。 */
+    private static void collectAncestors(String id, Map<String, Integer> depth, Set<String> ancestors) {
+        if (ancestors.contains(id)) {
+            return;
+        }
+        ancestors.add(id);
+        File commitFile = Utils.join(COMMITS_DIR, id);
+        Commit commit = Utils.readObject(commitFile, Commit.class);
+        String first = commit.getFirstParent();
+        String second = commit.getSecondParent();
+        if (first == null) {
+            depth.put(id, 0);
+            return;
+        }
+        collectAncestors(first, depth, ancestors);
+        if (second != null) {
+            collectAncestors(second, depth, ancestors);
+        }
+        int longest = depth.get(first);
+        if (second != null) {
+            longest = Math.max(longest, depth.get(second));
+        }
+        depth.put(id, longest + 1);
+    }
+
+    /** 沿 given 的祖先图回溯，在当前分支祖先集合中挑距离最大者返回。
+     *  @param id 当前遍历到的 commit ID。
+     *  @param ancestors 当前分支祖先集合。
+     *  @param depth 各 commit 到 initial 的最长距离。
+     *  @param visited 本次回溯已访问的 commit，防止重复访问。
+     *  @return 本子树下最深的公共祖先 ID；无公共祖先时返回 null。 */
+    private static String deepestCommonAncestor(String id, Set<String> ancestors,
+                                                 Map<String, Integer> depth,
+                                                 Set<String> visited) {
+        if (!visited.add(id)) {
+            return null;
+        }
+        File commitFile = Utils.join(COMMITS_DIR, id);
+        Commit commit = Utils.readObject(commitFile, Commit.class);
+        String first = commit.getFirstParent();
+        String second = commit.getSecondParent();
+
+        String best = ancestors.contains(id) ? id : null;
+        if (first != null) {
+            String candidate = deepestCommonAncestor(
+                    first, ancestors, depth, visited);
+            if (candidate != null
+                    && (best == null
+                        || depth.get(candidate) > depth.get(best))) {
+                best = candidate;
+            }
+        }
+        if (second != null) {
+            String candidate = deepestCommonAncestor(
+                    second, ancestors, depth, visited);
+            if (candidate != null
+                    && (best == null
+                        || depth.get(candidate) > depth.get(best))) {
+                best = candidate;
+            }
+        }
+        return best;
     }
 }

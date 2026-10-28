@@ -1,0 +1,48 @@
+# merge 决策分支2：given 新增文件、current 未改该文件，采纳并暂存后提交
+> init
+<<<
++ base.txt mbase.txt
+> add base.txt
+<<<
+> commit "base"
+<<<
+> branch other
+<<<
+
+# current 侧改动一个无关文件，形成真正分叉（split 既非两 head）
++ marker.txt mcur.txt
+> add marker.txt
+<<<
+> commit "current side"
+<<<
+
+# given 侧新增 only.txt
+> checkout other
+<<<
++ only.txt monlygiven.txt
+> add only.txt
+<<<
+> commit "given adds only"
+<<<
+
+> checkout master
+<<<
+> merge other
+<<<
+
+# only.txt 采纳为 given 版本；merge 后已提交，工作区干净
+= only.txt monlygiven.txt
+> status
+=== Branches ===
+*master
+other
+
+=== Staged Files ===
+
+=== Removed Files ===
+
+=== Modifications Not Staged For Commit ===
+
+=== Untracked Files ===
+
+<<<

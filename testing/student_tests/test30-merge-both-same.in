@@ -1,0 +1,53 @@
+# merge 决策分支4：两边把同一文件改成相同内容则不动；
+# 混入 given 新增文件以产生净改动，merge 成功且无冲突
+> init
+<<<
++ same.txt mbase.txt
+> add same.txt
+<<<
+> commit "base"
+<<<
+> branch other
+<<<
+
+# current 侧：same.txt 改成同一新版本
++ same.txt msame.txt
+> add same.txt
+<<<
+> commit "both change"
+<<<
+
+# given 侧：same.txt 也改成同一新版本，并新增 only.txt
+> checkout other
+<<<
++ same.txt msame.txt
+> add same.txt
+<<<
++ only.txt monlygiven.txt
+> add only.txt
+<<<
+> commit "given same plus only"
+<<<
+
+> checkout master
+<<<
+> merge other
+<<<
+
+# same.txt 为共同新版本，only.txt 采纳 given 版本；无冲突、工作区干净
+= same.txt msame.txt
+= only.txt monlygiven.txt
+> status
+=== Branches ===
+*master
+other
+
+=== Staged Files ===
+
+=== Removed Files ===
+
+=== Modifications Not Staged For Commit ===
+
+=== Untracked Files ===
+
+<<<

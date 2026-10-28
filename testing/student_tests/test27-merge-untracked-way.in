@@ -1,0 +1,31 @@
+# merge：被合并分支新增的文件与未追踪文件同名，挡路报错且状态不变
+> init
+<<<
++ base.txt mbase.txt
+> add base.txt
+<<<
+> commit "base"
+<<<
+> branch other
+<<<
+
+# given 侧新增 inway.txt 并提交
+> checkout other
+<<<
++ inway.txt mgiven.txt
+> add inway.txt
+<<<
+> commit "other adds inway"
+<<<
+
+# 回到 master，工作目录手工放一个未追踪的同名文件
+> checkout master
+<<<
++ inway.txt mcur.txt
+
+> merge other
+There is an untracked file in the way; delete it, or add and commit it first.
+<<<
+
+# 未追踪文件仍是手工放置的版本，未被覆盖
+= inway.txt mcur.txt

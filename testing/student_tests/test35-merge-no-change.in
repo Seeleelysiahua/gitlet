@@ -1,0 +1,51 @@
+I definitions.inc
+
+# merge 零动作路径：真正分叉但唯一文件两边改成相同内容，
+# 净改动为空，提交报错且不产生新 commit
+> init
+<<<
++ same.txt mbase.txt
+> add same.txt
+<<<
+> commit "base"
+<<<
+> branch other
+<<<
+
+# current 侧改成新版本
++ same.txt msame.txt
+> add same.txt
+<<<
+> commit "current edit"
+<<<
+
+# given 侧也改成同一新版本
+> checkout other
+<<<
++ same.txt msame.txt
+> add same.txt
+<<<
+> commit "given edit"
+<<<
+
+> checkout master
+<<<
+> merge other
+No changes added to the commit.
+<<<
+
+# 没有新 commit：head 仍是 current edit
+> log
+===
+${COMMIT_HEAD}
+current edit
+
+===
+${COMMIT_HEAD}
+base
+
+===
+${COMMIT_HEAD}
+initial commit
+
+<<<*

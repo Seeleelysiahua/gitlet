@@ -1,0 +1,47 @@
+# merge 决策分支3：given 删除文件、current 未改该文件，删除并提交
+> init
+<<<
++ del.txt mbase.txt
+> add del.txt
+<<<
+> commit "base"
+<<<
+> branch other
+<<<
+
+# current 侧改动无关文件，形成分叉
++ marker.txt mcur.txt
+> add marker.txt
+<<<
+> commit "current side"
+<<<
+
+# given 侧删除 del.txt
+> checkout other
+<<<
+> rm del.txt
+<<<
+> commit "given deletes del"
+<<<
+
+> checkout master
+<<<
+> merge other
+<<<
+
+# del.txt 已不存在；merge 已提交，工作区干净
+* del.txt
+> status
+=== Branches ===
+*master
+other
+
+=== Staged Files ===
+
+=== Removed Files ===
+
+=== Modifications Not Staged For Commit ===
+
+=== Untracked Files ===
+
+<<<

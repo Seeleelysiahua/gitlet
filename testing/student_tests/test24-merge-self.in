@@ -1,0 +1,17 @@
+# merge：合并当前分支自身，报错且不动状态
+> init
+<<<
++ base.txt mbase.txt
+> add base.txt
+<<<
+> commit "base"
+<<<
+> branch other
+<<<
+
+> merge master
+Cannot merge a branch with itself.
+<<<
+
+# 工作区文件不变
+= base.txt mbase.txt

@@ -1,0 +1,57 @@
+I definitions.inc
+
+# merge 决策分支5：两边把同一文件改成不同内容，冲突但仍生成 merge commit
+> init
+<<<
++ conf.txt mbase.txt
+> add conf.txt
+<<<
+> commit "base"
+<<<
+> branch other
+<<<
+
+# current 侧改成 current side
++ conf.txt mconf-c.txt
+> add conf.txt
+<<<
+> commit "current edit"
+<<<
+
+# given 侧改成 given side
+> checkout other
+<<<
++ conf.txt mconf-g.txt
+> add conf.txt
+<<<
+> commit "given edit"
+<<<
+
+> checkout master
+<<<
+> merge other
+Encountered a merge conflict.
+<<<
+
+# 冲突文件逐字节等于手写的五段期望
+= conf.txt mexpect-both.txt
+
+# merge commit 照常生成：带 Merge 行，消息逐字
+> log
+===
+${COMMIT_HEAD}
+Merged other into master.
+
+===
+${COMMIT_HEAD}
+current edit
+
+===
+${COMMIT_HEAD}
+base
+
+===
+${COMMIT_HEAD}
+initial commit
+
+<<<*

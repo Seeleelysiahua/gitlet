@@ -1,0 +1,51 @@
+# merge 决策分支4：两边删除同一文件则同删不冲突；
+# 混入 given 新增文件以产生净改动，merge 成功
+> init
+<<<
++ gone.txt mbase.txt
+> add gone.txt
+<<<
+> commit "base"
+<<<
+> branch other
+<<<
+
+# current 侧删除 gone.txt
+> rm gone.txt
+<<<
+> commit "current deletes"
+<<<
+
+# given 侧也删除 gone.txt，并新增 only.txt
+> checkout other
+<<<
+> rm gone.txt
+<<<
++ only.txt monlygiven.txt
+> add only.txt
+<<<
+> commit "given deletes plus only"
+<<<
+
+> checkout master
+<<<
+> merge other
+<<<
+
+# gone.txt 不存在，only.txt 采纳；无冲突、工作区干净
+* gone.txt
+= only.txt monlygiven.txt
+> status
+=== Branches ===
+*master
+other
+
+=== Staged Files ===
+
+=== Removed Files ===
+
+=== Modifications Not Staged For Commit ===
+
+=== Untracked Files ===
+
+<<<
