@@ -1,0 +1,25 @@
+# fetch：远程无新提交时再次 fetch 成功且幂等（已有对象整支剪枝）
+C remote
+> init
+<<<
++ r.txt mcur.txt
+> add r.txt
+<<<
+> commit "remote only"
+<<<
+
+C
+> init
+<<<
+> add-remote origin remote/.gitlet
+<<<
+
+# 首次 fetch：建远程跟踪指针
+> fetch origin master
+<<<
+E .gitlet/refs/remotes/origin/master
+
+# 远程没有新提交，再次 fetch 仍成功无输出，指针保持存在
+> fetch origin master
+<<<
+E .gitlet/refs/remotes/origin/master

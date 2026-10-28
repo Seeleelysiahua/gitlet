@@ -173,6 +173,10 @@ public class Repository {
                     rmRemote(operands[0]);
                     break;
 
+                case "fetch":
+                    fetch(operands[0], operands[1]);
+                    break;
+
                 default:
                     throw Utils.error("No command with that name exists.");
             }
@@ -761,6 +765,33 @@ public class Repository {
         Utils.writeObject(REMOTES_FILE, remotes);
     }
 
+    /** fetch 命令：把远程某分支的 head 及本地缺失的对象复制到本地，
+     *  并更新 refs/remotes/<名>/<分支> 和远程跟踪指针。
+     *  @param remoteName remotes 中登记的远程名；未注册或目录不存在时报错。
+     *  @param remoteBranchName 远程上的分支名；远程无此分支时报错。 */
+    static void fetch(String remoteName, String remoteBranchName) {
+        HashMap<String, String> remotes = readRemotes();
+        String remoteGitlet = remotes.get(remoteName);
+        if (remoteGitlet == null || !Utils.join(remoteGitlet).exists()) {
+            throw Utils.error("Remote directory not found.");
+        }
+
+        File remoteBranchFile = Utils.join(
+                remoteGitlet, "refs", "heads", remoteBranchName);
+        if (!remoteBranchFile.exists()) {
+            throw Utils.error("That remote does not have that branch.");
+        }
+
+        String remoteHeadID = Utils.readContentsAsString(remoteBranchFile);
+        copyMissingObjects(remoteGitlet, GITLET_DIR, remoteHeadID);
+
+        // 远程跟踪分支目录与指针：refs/remotes/<名>/<分支>。
+        File remoteRefDir = Utils.join(REMOTE_REFS_DIR, remoteName);
+        remoteRefDir.mkdirs();
+        File remoteRefFile = Utils.join(remoteRefDir, remoteBranchName);
+        Utils.writeContents(remoteRefFile, remoteHeadID);
+    }
+
     /* ==================== 跨命令 helper ==================== */
 
     /** 读 HEAD，得当前分支名。
@@ -942,6 +973,46 @@ public class Repository {
             return Utils.readObject(REMOTES_FILE, HashMap.class);
         }
         return new HashMap<>();
+    }
+
+    /** 从源仓库的 headID 沿 parent 复制目标仓库尚缺失的 commit 及其 blob。
+     *  <p>显式栈遍历，遇到目标已有的 commit 即整支剪枝。
+     *  @param srcGitlet 源仓库 远程 .gitlet 目录路径。
+     *  @param dstGitlet 目标仓库 .gitlet 目录。
+     *  @param headID 复制起点 commit ID。 */
+    static void copyMissingObjects(String srcGitlet, File dstGitlet,
+                                   String headID) {
+        Deque<String> stack = new ArrayDeque<>();
+        stack.push(headID);
+
+        while (!stack.isEmpty()) {
+            String id = stack.pop();
+            File dstCommitFile = Utils.join(dstGitlet, "objects", "commits", id);
+            if (dstCommitFile.exists()) {
+                continue;
+            }
+
+            File srcCommitFile = Utils.join(srcGitlet, "objects", "commits", id);
+            Commit commit = Utils.readObject(srcCommitFile, Commit.class);
+            Utils.writeObject(dstCommitFile, commit);
+
+            // 复制该 commit 引用、而目标目录尚缺的 blob。
+            for (String blobID : commit.getFilenameToBlob().values()) {
+                File dstBlobFile = Utils.join(dstGitlet, "objects", "blobs", blobID);
+                if (dstBlobFile.exists()) {
+                    continue;
+                }
+                File srcBlobFile = Utils.join(srcGitlet, "objects", "blobs", blobID);
+                Utils.writeContents(dstBlobFile, Utils.readContents(srcBlobFile));
+            }
+
+            if (commit.getFirstParent() != null) {
+                stack.push(commit.getFirstParent());
+            }
+            if (commit.getSecondParent() != null) {
+                stack.push(commit.getSecondParent());
+            }
+        }
     }
 
     /* ==================== 单命令私有 helper ==================== */

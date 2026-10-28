@@ -1,0 +1,16 @@
+# fetch：远程存在但没有指定分支，报错
+C remote
+> init
+<<<
+
+C
+> init
+<<<
+> add-remote origin remote/.gitlet
+<<<
+
+> fetch origin ghost
+That remote does not have that branch.
+<<<
+
+* .gitlet/refs/remotes/origin/ghost

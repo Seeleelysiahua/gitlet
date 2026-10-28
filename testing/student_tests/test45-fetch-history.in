@@ -1,0 +1,51 @@
+I definitions.inc
+
+# fetch：远程含分叉合并（merge commit 双 parent）时，整段历史对象完整复制
+# 远程：initial→c1，建 side；master 前进 cmaster；side 前进 c2；master 合并 side
+C remote
+> init
+<<<
++ a.txt mcur.txt
+> add a.txt
+<<<
+> commit "c1"
+<<<
+> branch side
+<<<
++ m.txt msame.txt
+> add m.txt
+<<<
+> commit "cmaster"
+<<<
+> checkout side
+<<<
++ b.txt mgiven.txt
+> add b.txt
+<<<
+> commit "c2"
+<<<
+> checkout master
+<<<
+> merge side
+<<<
+
+# 主仓库独立 init
+C
+> init
+<<<
+> add-remote origin remote/.gitlet
+<<<
+> fetch origin master
+<<<
+
+# 远程 5 个 commit（initial/c1/cmaster/c2/merge），initial 与本地复用：
+# global-log 应恰好 5 块，含只在 second parent 链上的 c2
+> global-log
+${COMMIT_LOG}
+${COMMIT_LOG}
+${COMMIT_LOG}
+${COMMIT_LOG}
+${COMMIT_LOG}
+<<<*
+
+E .gitlet/refs/remotes/origin/master

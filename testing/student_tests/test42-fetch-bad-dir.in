@@ -1,0 +1,11 @@
+# fetch：已注册远程名但目录不存在，报错
+> init
+<<<
+> add-remote origin no/such/dir/.gitlet
+<<<
+
+> fetch origin master
+Remote directory not found.
+<<<
+
+* .gitlet/refs/remotes/origin/master

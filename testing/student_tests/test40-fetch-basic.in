@@ -1,0 +1,39 @@
+I definitions.inc
+
+# fetch：首次复制远程分支并创建远程跟踪指针
+# 远程仓库：两个提交
+C remote
+> init
+<<<
++ r.txt mcur.txt
+> add r.txt
+<<<
+> commit "remote first"
+<<<
++ r2.txt mgiven.txt
+> add r2.txt
+<<<
+> commit "remote second"
+<<<
+
+# 主仓库：独立的空库，global-log 初始只有 initial commit
+C
+> init
+<<<
+> add-remote origin remote/.gitlet
+<<<
+
+# fetch 成功无输出
+> fetch origin master
+<<<
+
+# 创建远程跟踪指针文件
+E .gitlet/refs/remotes/origin/master
+
+# 复制来两个远程特有 commit（initial 两边相同只一份），
+# global-log 现有 3 个 commit 块：initial + remote first + remote second
+> global-log
+${COMMIT_LOG}
+${COMMIT_LOG}
+${COMMIT_LOG}
+<<<*

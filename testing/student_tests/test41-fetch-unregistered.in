@@ -1,0 +1,10 @@
+# fetch：remote 名未注册，按远程目录不存在报错
+> init
+<<<
+
+> fetch origin master
+Remote directory not found.
+<<<
+
+# 未创建任何远程跟踪指针
+* .gitlet/refs/remotes/origin/master
