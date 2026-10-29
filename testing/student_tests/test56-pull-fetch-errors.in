@@ -1,0 +1,40 @@
+I definitions.inc
+
+# pull：fetch 段失败直接透传，merge 段不执行（全程零改动）
+# 远程仓造一个 master 提交后，把指针文件删掉模拟"远程无此分支"
+C remote
+> init
+<<<
++ r.txt mcur.txt
+> add r.txt
+<<<
+> commit "remote work"
+<<<
+
+C
+> init
+<<<
+> add-remote origin remote/.gitlet
+<<<
+
+# 远程名未注册（换一个没登记过的名字）：fetch 的失败消息逐字透传
+> pull upstream master
+Remote directory not found.
+<<<
+
+# 删掉远程 master 指针，制造"远程没有该分支"
+- remote/.gitlet/refs/heads/master
+
+> pull origin master
+That remote does not have that branch.
+<<<
+
+# 两次失败都不产生远程跟踪指针，本地分支也无任何变化（仍只 initial）
+* .gitlet/refs/remotes/origin/master
+* .gitlet/refs/remotes/upstream/master
+> log
+===
+${COMMIT_HEAD}
+initial commit
+
+<<<*

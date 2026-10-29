@@ -1,0 +1,49 @@
+I definitions.inc
+
+# pull：本地停在共同历史、远程前进，走 merge 快进边界
+# 远程：initial -> c1 -> c2
+C remote
+> init
+<<<
++ r.txt mcur.txt
+> add r.txt
+<<<
+> commit "remote c1"
+<<<
++ r2.txt mgiven.txt
+> add r2.txt
+<<<
+> commit "remote c2"
+<<<
+
+# 本地：独立空库注册远程
+C
+> init
+<<<
+> add-remote origin remote/.gitlet
+<<<
+
+# pull 取回后快进，merge 段输出逐字
+> pull origin master
+Current branch fast-forwarded.
+<<<
+
+# 当前分支指针前移到远程 c2：工作目录出现 r2.txt，log 共 3 块
+= r2.txt mgiven.txt
+> log
+===
+${COMMIT_HEAD}
+remote c2
+
+===
+${COMMIT_HEAD}
+remote c1
+
+===
+${COMMIT_HEAD}
+initial commit
+
+<<<*
+
+# fetch 段副作用：远程跟踪指针已建立
+E .gitlet/refs/remotes/origin/master

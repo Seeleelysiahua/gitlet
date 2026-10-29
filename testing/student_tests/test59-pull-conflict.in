@@ -1,0 +1,56 @@
+I definitions.inc
+
+# pull：双方在共同祖先后把同一文件改成不同内容，merge 段冲突
+# 共同起点 base
+> init
+<<<
++ conf.txt mbase.txt
+> add conf.txt
+<<<
+> commit "base"
+<<<
+
+C remote
+> init
+<<<
++ conf.txt mbase.txt
+> add conf.txt
+<<<
+> commit "base"
+<<<
+
+# 本地侧改成 current side
+C
++ conf.txt mconf-c.txt
+> add conf.txt
+<<<
+> commit "local edit"
+<<<
+
+# 远程侧改成 given side
+C remote
++ conf.txt mconf-g.txt
+> add conf.txt
+<<<
+> commit "remote edit"
+<<<
+C
+> add-remote origin remote/.gitlet
+<<<
+
+# pull：fetch 静默，merge 段报冲突消息
+> pull origin master
+Encountered a merge conflict.
+<<<
+
+# 工作目录冲突文件逐字节等于手写五段
+= conf.txt mexpect-both.txt
+
+# merge commit 照常生成，消息中的被合并名为远程跟踪分支
+> log
+===
+${COMMIT_HEAD}
+Merged origin/master into master.
+
+${ARBLINES}
+<<<*

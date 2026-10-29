@@ -181,6 +181,10 @@ public class Repository {
                     push(operands[0], operands[1]);
                     break;
 
+                case "pull":
+                    pull(operands[0], operands[1]);
+                    break;
+
                 default:
                     throw Utils.error("No command with that name exists.");
             }
@@ -823,6 +827,17 @@ public class Repository {
 
         copyMissingObjects(GITLET_DIR.getPath(), remoteGitlet, localHeadID);
         Utils.writeContents(remoteBranchFile, localHeadID);
+    }
+
+    /** pull 命令：先取回远程分支及其缺失对象，再把它合并进当前分支。
+     *  <p>等价于依次执行 fetch 与 merge；本方法无自身检查行，
+     *  失败消息与落盘分界均沿用这两条命令。
+     *  @param remoteName remotes 中登记的远程名。
+     *  @param remoteBranchName 远程上的分支名。 */
+    static void pull(String remoteName, String remoteBranchName) {
+        fetch(remoteName, remoteBranchName);
+        String trackingBranch = remoteName + "/" + remoteBranchName;
+        merge(trackingBranch);
     }
 
     /* ==================== 跨命令 helper ==================== */

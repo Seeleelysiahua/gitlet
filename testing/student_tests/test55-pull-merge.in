@@ -1,0 +1,60 @@
+I definitions.inc
+
+# pull：本地与远程在共同祖先之后各自前进，产生真正的 merge commit
+# 共同起点：initial -> base（含 base.txt）
+> init
+<<<
++ base.txt mbase.txt
+> add base.txt
+<<<
+> commit "base"
+<<<
+
+# 把共同起点复制成远程，并注册
+C remote
+> init
+<<<
++ base.txt mbase.txt
+> add base.txt
+<<<
+> commit "base"
+<<<
+C
+> add-remote origin remote/.gitlet
+<<<
+
+# 本地侧前进一个提交
++ local.txt mcur.txt
+> add local.txt
+<<<
+> commit "local work"
+<<<
+
+# 远程侧独立前进一个提交
+C remote
++ remote.txt mgiven.txt
+> add remote.txt
+<<<
+> commit "remote work"
+<<<
+C
+
+# pull = fetch + merge：合并成功无冲突、无额外输出（merge 真正合并路径静默）
+> pull origin master
+<<<
+
+# 双方文件都进入工作目录
+= local.txt mcur.txt
+= remote.txt mgiven.txt
+
+# 最新块为 merge commit，消息含被合并的远程跟踪分支名，带 Merge 行
+> log
+===
+${COMMIT_HEAD}
+Merged origin/master into master.
+
+${ARBLINES}
+<<<*
+
+# 远程跟踪指针存在且指向远程的 remote work
+E .gitlet/refs/remotes/origin/master

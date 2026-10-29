@@ -1,0 +1,43 @@
+I definitions.inc
+
+# pull：fetch 段成功、merge 段因未提交改动失败；
+# fetch 的只增对象与远程跟踪指针保留，工作目录不动
+C remote
+> init
+<<<
++ r.txt mcur.txt
+> add r.txt
+<<<
+> commit "remote work"
+<<<
+
+C
+> init
+<<<
+> add-remote origin remote/.gitlet
+<<<
+
+# 制造未提交改动（staged）
++ local.txt mgiven.txt
+> add local.txt
+<<<
+
+> pull origin master
+You have uncommitted changes.
+<<<
+
+# fetch 段已落地：远程跟踪指针在、取回的对象可读（global-log 含 remote work 共 2 块）
+E .gitlet/refs/remotes/origin/master
+> global-log
+${COMMIT_LOG}
+${COMMIT_LOG}
+<<<*
+
+# merge 段未执行：当前分支仍只在 initial，工作目录的暂存文件原样保留
+> log
+===
+${COMMIT_HEAD}
+initial commit
+
+<<<*
+= local.txt mgiven.txt

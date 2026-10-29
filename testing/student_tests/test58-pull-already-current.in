@@ -1,0 +1,38 @@
+I definitions.inc
+
+# pull：远程 head 是当前 commit 的祖先（本地领先），merge 走边界1
+C remote
+> init
+<<<
+
+# 本地在共同 initial 之上有自己的提交
+C
+> init
+<<<
+> add-remote origin remote/.gitlet
+<<<
++ a.txt mcur.txt
+> add a.txt
+<<<
+> commit "local ahead"
+<<<
+
+# fetch 成功（远程只有 initial），merge 判定 given 为祖先，输出逐字且不产生提交
+> pull origin master
+Given branch is an ancestor of the current branch.
+<<<
+
+# 本地分支位置不变：log 仍是 local ahead + initial 两块
+> log
+===
+${COMMIT_HEAD}
+local ahead
+
+===
+${COMMIT_HEAD}
+initial commit
+
+<<<*
+
+# 远程跟踪指针建立
+E .gitlet/refs/remotes/origin/master
