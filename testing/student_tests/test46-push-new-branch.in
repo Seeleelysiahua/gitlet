@@ -1,0 +1,47 @@
+I definitions.inc
+
+# push：远程为全新空库、无该分支，直接新建分支并复制全部历史
+# 主仓库：initial + 一个提交
+> init
+<<<
++ a.txt mcur.txt
+> add a.txt
+<<<
+> commit "local first"
+<<<
+
+# 远程：独立 init 的空库，只有 initial commit
+C remote
+> init
+<<<
+C
+> add-remote origin remote/.gitlet
+<<<
+
+# push 成功无输出
+> push origin master
+<<<
+
+# 远程分支指针被创建
+E remote/.gitlet/refs/heads/master
+
+# 远程 log 现在能沿指针读到本地的两个 commit 块（initial + local first），
+# 同时捕获推送来的 head ID
+C remote
+> log
+===
+${COMMIT_HEAD}
+local first
+
+===
+${COMMIT_HEAD}
+initial commit
+
+<<<*
+
+# 推送只写对象与指针、不动远程工作目录：工作目录仍无 a.txt，
+# 用捕获到的 head ID 从推送来的快照取文件验证 blob 已复制
+* a.txt
+> checkout ${1} -- a.txt
+<<<
+= a.txt mcur.txt

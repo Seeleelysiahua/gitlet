@@ -1,0 +1,40 @@
+I definitions.inc
+
+# push：远程已有 master，推一个远程不存在的新分支名，直接新建不动 master
+> init
+<<<
++ a.txt mcur.txt
+> add a.txt
+<<<
+> commit "local work"
+<<<
+> branch feature
+<<<
+
+C remote
+> init
+<<<
+C
+> add-remote origin remote/.gitlet
+<<<
+
+# 远程没有 feature 分支，免快进检查直接创建
+> push origin feature
+<<<
+
+E remote/.gitlet/refs/heads/feature
+
+# 远程 master 仍是其 initial commit：切到远程查 feature 的 log 有 2 块
+C remote
+> log
+${COMMIT_LOG}
+<<<*
+> checkout feature
+<<<
+> log
+${COMMIT_LOG}
+${COMMIT_LOG}
+<<<*
+
+# feature 工作树文件来自本地推送
+= a.txt mcur.txt

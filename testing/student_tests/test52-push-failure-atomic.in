@@ -1,0 +1,47 @@
+I definitions.inc
+
+# push：非快进失败时对远程零增量——指针不动，且不复制任何对象
+# 本地分叉前的准备：本地与远程各有独立提交
+> init
+<<<
++ a.txt mcur.txt
+> add a.txt
+<<<
+> commit "local work"
+<<<
+
+C remote
+> init
+<<<
++ b.txt mgiven.txt
+> add b.txt
+<<<
+> commit "remote work"
+<<<
+C
+> add-remote origin remote/.gitlet
+<<<
+
+# 推送被拒
+> push origin master
+Please pull down remote changes before pushing.
+<<<
+
+# 远程 global-log 仍只有 initial 与 remote work 两块，local work 未被复制过去
+C remote
+> global-log
+${COMMIT_LOG}
+${COMMIT_LOG}
+<<<*
+
+# 远程 master 指针未动：沿指针的 log 最新块消息仍是 remote work
+> log
+===
+${COMMIT_HEAD}
+remote work
+
+===
+${COMMIT_HEAD}
+initial commit
+
+<<<*

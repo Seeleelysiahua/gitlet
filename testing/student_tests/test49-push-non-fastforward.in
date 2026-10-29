@@ -1,0 +1,35 @@
+I definitions.inc
+
+# push：远程分支有本地历史之外的提交，非快进，报错
+# 本地与远程各自在共同 initial 上独立前进
+> init
+<<<
++ a.txt mcur.txt
+> add a.txt
+<<<
+> commit "local only"
+<<<
+
+C remote
+> init
+<<<
++ b.txt mgiven.txt
+> add b.txt
+<<<
+> commit "remote only"
+<<<
+C
+> add-remote origin remote/.gitlet
+<<<
+
+# 远程 head（remote only）不在本地 head 的祖先链上，拒绝
+> push origin master
+Please pull down remote changes before pushing.
+<<<
+
+# 远程 master 指针未被改动：远程 log 仍是 2 块且最新消息为 remote only
+C remote
+> log
+${COMMIT_LOG}
+${COMMIT_LOG}
+<<<*

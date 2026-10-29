@@ -1,0 +1,66 @@
+I definitions.inc
+
+# push：重复推送同一 head 幂等成功；含双 parent 的 merge commit 也能推送
+# 本地造出分叉合并拓扑：initial -> c1(master) -> cmaster
+#                     \-> c2(side)，master 合并 side 得 merge commit
+> init
+<<<
++ a.txt mbase.txt
+> add a.txt
+<<<
+> commit "c1"
+<<<
+> branch side
+<<<
++ m.txt msame.txt
+> add m.txt
+<<<
+> commit "cmaster"
+<<<
+> checkout side
+<<<
++ b.txt mgiven.txt
+> add b.txt
+<<<
+> commit "c2"
+<<<
+> checkout master
+<<<
+> merge side
+<<<
+
+C remote
+> init
+<<<
+C
+> add-remote origin remote/.gitlet
+<<<
+
+# 首次推送整个合并历史（merge commit 双 parent 都须可达、都要复制）
+> push origin master
+<<<
+
+# 远程 global-log 恰好 5 块：initial/c1/cmaster/c2/merge，
+# 缺 second-parent 链上的 c2 就只会有 4 块
+C remote
+> global-log
+${COMMIT_LOG}
+${COMMIT_LOG}
+${COMMIT_LOG}
+${COMMIT_LOG}
+${COMMIT_LOG}
+<<<*
+
+# 沿 master 指针的 log 含 merge commit（断言 Merge 双短 SHA 行）
+> log
+===
+${COMMIT_HEAD}
+Merged side into master.
+
+${ARBLINES}
+<<<*
+
+# 远程 master 指针已是本地 head，再次推送（远程 head == 本地 head，祖先含相等）成功
+C
+> push origin master
+<<<

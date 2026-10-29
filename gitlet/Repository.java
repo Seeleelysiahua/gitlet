@@ -177,6 +177,10 @@ public class Repository {
                     fetch(operands[0], operands[1]);
                     break;
 
+                case "push":
+                    push(operands[0], operands[1]);
+                    break;
+
                 default:
                     throw Utils.error("No command with that name exists.");
             }
@@ -783,13 +787,42 @@ public class Repository {
         }
 
         String remoteHeadID = Utils.readContentsAsString(remoteBranchFile);
-        copyMissingObjects(remoteGitlet, GITLET_DIR, remoteHeadID);
+        copyMissingObjects(remoteGitlet, GITLET_DIR.getPath(), remoteHeadID);
 
         // 远程跟踪分支目录与指针：refs/remotes/<名>/<分支>。
         File remoteRefDir = Utils.join(REMOTE_REFS_DIR, remoteName);
         remoteRefDir.mkdirs();
         File remoteRefFile = Utils.join(remoteRefDir, remoteBranchName);
         Utils.writeContents(remoteRefFile, remoteHeadID);
+    }
+
+    /** push 命令：把当前分支 head 可达、远程尚缺的对象复制到远程，
+     *  并将远程同名分支指针快进到本地 head；远程无此分支时直接新建。
+     *  @param remoteName remotes 中登记的远程名；未注册或目录不存在时报错。
+     *  @param remoteBranchName 远程上的分支名；已存在但其 head 不在本地
+     *         head 历史中时报错。 */
+    static void push(String remoteName, String remoteBranchName) {
+        HashMap<String, String> remotes = readRemotes();
+        String remoteGitlet = remotes.get(remoteName);
+        if (remoteGitlet == null || !Utils.join(remoteGitlet).exists()) {
+            throw Utils.error("Remote directory not found.");
+        }
+
+        String localHeadID = getCurrentCommitID();
+        File remoteBranchFile = Utils.join(
+                remoteGitlet, "refs", "heads", remoteBranchName);
+
+        // 远程分支已存在时要求快进：远程 head 必须是本地 head 的祖先（含相等）。
+        if (remoteBranchFile.exists()) {
+            String remoteHeadID = Utils.readContentsAsString(remoteBranchFile);
+            if (!isAncestor(remoteHeadID, localHeadID)) {
+                throw Utils.error(
+                        "Please pull down remote changes before pushing.");
+            }
+        }
+
+        copyMissingObjects(GITLET_DIR.getPath(), remoteGitlet, localHeadID);
+        Utils.writeContents(remoteBranchFile, localHeadID);
     }
 
     /* ==================== 跨命令 helper ==================== */
@@ -977,10 +1010,10 @@ public class Repository {
 
     /** 从源仓库的 headID 沿 parent 复制目标仓库尚缺失的 commit 及其 blob。
      *  <p>显式栈遍历，遇到目标已有的 commit 即整支剪枝。
-     *  @param srcGitlet 源仓库 远程 .gitlet 目录路径。
-     *  @param dstGitlet 目标仓库 .gitlet 目录。
+     *  @param srcGitlet 源仓库 .gitlet 目录路径。
+     *  @param dstGitlet 目标仓库 .gitlet 目录路径。
      *  @param headID 复制起点 commit ID。 */
-    static void copyMissingObjects(String srcGitlet, File dstGitlet,
+    static void copyMissingObjects(String srcGitlet, String dstGitlet,
                                    String headID) {
         Deque<String> stack = new ArrayDeque<>();
         stack.push(headID);
@@ -1111,5 +1144,34 @@ public class Repository {
             }
         }
         return best;
+    }
+
+    /** 判断 ancestorID 是否等于 descendantID 或在其祖先集合中。
+     *  @param ancestorID 待判定为祖先的 commit ID。
+     *  @param descendantID 遍历起点 commit ID。
+     *  @return ancestorID 可达时为 true，否则为 false。 */
+    private static boolean isAncestor(String ancestorID, String descendantID) {
+        Deque<String> stack = new ArrayDeque<>();
+        Set<String> visited = new HashSet<>();
+        stack.push(descendantID);
+
+        while (!stack.isEmpty()) {
+            String id = stack.pop();
+            if (!visited.add(id)) {
+                continue;
+            }
+            if (id.equals(ancestorID)) {
+                return true;
+            }
+            File commitFile = Utils.join(COMMITS_DIR, id);
+            Commit commit = Utils.readObject(commitFile, Commit.class);
+            if (commit.getFirstParent() != null) {
+                stack.push(commit.getFirstParent());
+            }
+            if (commit.getSecondParent() != null) {
+                stack.push(commit.getSecondParent());
+            }
+        }
+        return false;
     }
 }

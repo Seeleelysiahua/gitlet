@@ -1,0 +1,57 @@
+I definitions.inc
+
+# push：远程分支停在本地历史中的旧提交，快进推进成功
+# 主仓库先造初始提交 c1
+> init
+<<<
++ a.txt mcur.txt
+> add a.txt
+<<<
+> commit "c1"
+<<<
+
+# 远程空库，第一次 push：远程 master 指向 c1
+C remote
+> init
+<<<
+C
+> add-remote origin remote/.gitlet
+<<<
+> push origin master
+<<<
+
+# 本地在 c1 之上再加 c2
++ b.txt mgiven.txt
+> add b.txt
+<<<
+> commit "c2"
+<<<
+
+# 第二次 push：远程 head（c1）是本地 head（c2）的祖先，快进成功无输出
+> push origin master
+<<<
+
+# 远程 log 恰好 3 个 commit 块（initial + c1 + c2），缺对象则 log 读不出来；
+# 第一块即推送来的新 head，捕获其 ID
+C remote
+> log
+===
+${COMMIT_HEAD}
+c2
+
+===
+${COMMIT_HEAD}
+c1
+
+===
+${COMMIT_HEAD}
+initial commit
+
+<<<*
+
+# c2 的 b.txt blob 已复制：用捕获的 head ID 从该快照取文件，内容与本地一致；
+# 推送本身不动远程工作目录，取文件前 b.txt 不存在
+* b.txt
+> checkout ${1} -- b.txt
+<<<
+= b.txt mgiven.txt

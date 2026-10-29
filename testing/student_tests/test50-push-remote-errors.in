@@ -1,0 +1,19 @@
+# push：远程名未注册、以及已注册但目录失效，均按远程目录不存在报错
+> init
+<<<
+
+# 未注册的远程名
+> push origin master
+Remote directory not found.
+<<<
+
+> add-remote origin gone/.gitlet
+<<<
+
+# 名字在册但目录从不存在
+> push origin master
+Remote directory not found.
+<<<
+
+# 失败后本地无任何远程跟踪/分支相关产物
+* .gitlet/refs/remotes/origin/master

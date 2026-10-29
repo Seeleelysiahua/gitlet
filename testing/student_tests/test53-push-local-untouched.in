@@ -1,0 +1,52 @@
+I definitions.inc
+
+# push：成功推送后本地五项状态（工作目录/stage/.gitlet 本地分支/HEAD）零变化
+> init
+<<<
++ a.txt mcur.txt
+> add a.txt
+<<<
+> commit "local work"
+<<<
+# 再制造一个已 add 未 commit 的暂存项，推送后必须原样保留
++ b.txt mgiven.txt
+> add b.txt
+<<<
+
+C remote
+> init
+<<<
+C
+> add-remote origin remote/.gitlet
+<<<
+
+> push origin master
+<<<
+
+# 当前分支仍是 master，stage 中 b.txt 仍在 Branches/Staged Files 里，
+# 本地分支指针停在 local work（最新提交块，不包含来自远程的任何东西）
+> status
+=== Branches ===
+*master
+
+=== Staged Files ===
+b.txt
+
+=== Removed Files ===
+
+=== Modifications Not Staged For Commit ===
+
+=== Untracked Files ===
+
+<<<
+
+# 本地工作目录两个文件都在
+= a.txt mcur.txt
+= b.txt mgiven.txt
+
+# 本地 log 只有两个提交块，远程跟踪指针不应被 push 创建
+> log
+${COMMIT_LOG}
+${COMMIT_LOG}
+<<<*
+* .gitlet/refs/remotes/origin/master
